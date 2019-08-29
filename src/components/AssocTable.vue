@@ -1,37 +1,18 @@
 <template>
-  <div
-    class="assoc-table">
-    <div
-      v-if="dataError"
-      class="border p-2 m-2">
+  <div class="assoc-table">
+    <div v-if="dataError" class="border p-2 m-2">
       <h3>BioLink Error</h3>
       <div class="col-xs-12">
         {{ dataError }}
       </div>
     </div>
 
-    <div
-      v-show="!dataFetched && !dataError"
-      class="loading-div">
+    <div v-show="!dataFetched && !dataError" class="loading-div">
 
-      <b-progress
-        :value="100"
-        height="4rem"
-        variant="info"
-        striped
-        animated
-        class="m-1">
-        <b-progress-bar
-          :value="100"
-          class="p-4">
-          <h3>&nbsp;Loading Associations …&nbsp;</h3>
-        </b-progress-bar>
-      </b-progress>
-
+      <b-spinner class="loading-spinner" type="grow" label="Spinning"/>
     </div>
 
-    <div
-      v-show="dataFetched && !dataError">
+    <div v-show="dataFetched && !dataError">
 
       <h5>
         &nbsp;<strong>{{ totalAssociations }}</strong>&nbsp;
@@ -55,85 +36,92 @@
           <i>{{ data.item.taxonLabel }}</i>
         </template>
 
-        <template
-          slot="assocObject"
-          slot-scope="data"
-        >
-          <template
-            v-if="data.item.objectLink">
+        <template slot="assocObject" slot-scope="data">
+          <template v-if="data.item.objectLink">
             <strong>
-              <router-link
-                :to="data.item.objectLink">
-                {{ data.item.assocObject }}
-              </router-link>
+              <router-link :to="data.item.objectLink" v-html="$sanitizeText(data.item.assocObject)"/>
             </strong>
           </template>
-          <template
-            v-else>
+          <template v-else>
             <strong>
               {{ data.item.assocObject }}
             </strong>
           </template>
         </template>
 
-        <template
-          slot="relation"
-          slot-scope="data"
-        >
+        <template slot="relation" slot-scope="data">
           <small>
             <a
               :href="data.item.relation.url"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <span
-                v-if="data.item.relation.inverse">
+              <span v-if="data.item.relation.inverse">
                 <b>&Larr;</b>
               </span>
               {{ data.item.relation.label }}
-              <span
-                v-if="data.item.relation.inverse">
+              <span v-if="data.item.relation.inverse">
                 <b>&Larr;</b>
               </span>
             </a>
           </small>
         </template>
 
-        <template
-          slot="assocSubject"
-          slot-scope="data"
-        >
-          <template
-            v-if="data.item.subjectLink">
+        <template slot="assocSubject" slot-scope="data">
+          <template v-if="data.item.subjectLink">
             <strong>
-              <router-link :to="data.item.subjectLink">
+              <router-link :to="data.item.subjectLink" v-html="$sanitizeText(data.item.assocSubject)">
                 {{ data.item.assocSubject }}
               </router-link>
             </strong>
           </template>
-          <template
-            v-else>
+          <template v-else>
             <strong>
               {{ data.item.assocSubject }}
             </strong>
           </template>
         </template>
 
+        <template v-if="hasFrequencyOnset" slot="frequency" slot-scope="data">
+          <a
+            v-if="data.item.frequency"
+            :href="data.item.frequency.url"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <small>
+              {{ data.item.frequency.label }}
+            </small>
+          </a>
+        </template>
+
         <template
-          slot="support"
+          v-if="hasFrequencyOnset"
+          slot="onset"
           slot-scope="data"
         >
+          <a
+            v-if="data.item.onset"
+            :href="data.item.onset.url"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <small>
+              {{ data.item.onset.label }}
+            </small>
+          </a>
+        </template>
+
+        <template slot="support" slot-scope="data">
           <b-button
             :pressed.sync="data.item._showDetails"
             size="small"
             class="btn btn-xs px-1 py-0 m-0"
             variant="outline-info">
-            <span
-              v-if="data.item._showDetails">
+            <span v-if="data.item._showDetails">
               &blacktriangledown;&nbsp;
             </span>
-            <span
-              v-else>
+            <span v-else>
               &blacktriangleright;&nbsp;
             </span>
 
@@ -150,27 +138,21 @@
           </b-button>
         </template>
 
-        <template
-          slot="row-details"
-          slot-scope="row"
-        >
+        <template slot="row-details" slot-scope="row">
           <div class="container-fluid support-section py-0">
             <div
               v-for="(support, index) in row.item.support"
               :key="index"
               class="row"
             >
-              <div
-                class="col-9 px-1">
+              <div class="col-9 px-1">
                 <template
                   v-if="support.useRouter">
-                  <router-link
-                    :to="support.url">
+                  <router-link :to="support.url">
                     {{ support.label }}
                   </router-link>
                 </template>
-                <template
-                  v-else>
+                <template v-else>
                   <a
                     :href="support.url"
                     target="_blank"
@@ -184,13 +166,10 @@
                   </a>
                 </template>
               </div>
-              <div
-                class="col-2 px-1">
+              <div class="col-2 px-1">
                 <small>{{ support.type }}</small>
               </div>
-              <div
-                class="col-1 px-1"
-                style="text-align: center;">
+              <div class="col-1 px-1" style="text-align: center;">
                 <i
                   :class="support.typeIcon"
                   class="fa fa-fw text-info"
@@ -200,7 +179,8 @@
           </div>
         </template>
       </b-table>
-      <div v-if="totalAssociations > rowsPerPage">
+      <div
+        v-if="totalAssociations > rowsPerPage">
         <b-pagination
           v-model="currentPage"
           :per-page="rowsPerPage"
@@ -218,6 +198,12 @@
 import * as BL from '@/api/BioLink';
 import sourceToImage from '../lib/sources';
 import { isTaxonCardType } from '../lib/TaxonMap';
+
+function isFrequencyOnsetType(nodeType, cardType) {
+  return (nodeType === 'disease' && cardType === 'phenotype') ||
+         (nodeType === 'phenotype' && cardType === 'disease');
+}
+
 
 export default {
   components: {
@@ -252,6 +238,7 @@ export default {
       rowsPerPage: 25,
       totalAssociations: 0,
       hasTaxon: false,
+      hasFrequencyOnset: false,
       associationData: '',
       dataFetched: false,
       dataError: false,
@@ -513,7 +500,7 @@ export default {
         }
         const objectElem = elem.object;
         const subjectElem = elem.subject;
-        const objectTaxon = this.parseTaxon(objectElem);
+        let objectTaxon = this.parseTaxon(objectElem);
         // const subjectTaxon = this.parseTaxon(subjectElem);
 
         const support = [];
@@ -562,22 +549,20 @@ export default {
         }
 
         const supportLength = support.length;
-        // console.log('support');
-        // console.log(JSON.stringify(support, null, 2));
-        // console.log('taxon.id', taxon.id, this.allFacets.includes(taxon.id), this.trueFacets.includes(taxon.id));
         if (objectTaxon.id && this.allFacets().includes(objectTaxon.id) && !this.trueFacets().includes(objectTaxon.id)) {
           // console.log('skipping', objectTaxon.id, elem);
         }
         else {
-          let simplifiedCardType = this.cardType.replace(/ortholog-/g, '');
-          if (simplifiedCardType === 'interaction') {
-            simplifiedCardType = 'gene';
-          }
-          else if (simplifiedCardType === 'homolog') {
-            simplifiedCardType = 'gene';
+          let modifiedCardType = this.cardType;
+          if (modifiedCardType === 'interaction' || modifiedCardType  === 'ortholog-phenotype' || modifiedCardType  === 'ortholog-disease') {
+            modifiedCardType  = 'gene';
+            objectTaxon = this.parseTaxon(subjectElem);
+          } else if(modifiedCardType === 'homolog') {
+            modifiedCardType  = 'gene';
+            objectTaxon = this.parseTaxon(objectElem);
           }
 
-          let objectLink = `/${simplifiedCardType}/${objectElem.id}`;
+          let objectLink = `/${modifiedCardType}/${objectElem.id}`;
           if (objectElem.id.indexOf(':.well-known') === 0) {
             objectLink = null;
           }
@@ -604,10 +589,18 @@ export default {
             taxonLabel: objectTaxon.label,
             taxonId: objectTaxon.id,
             relation: elem.relation,
+            frequency: elem.frequency,
+            onset: elem.onset,
             _showDetails: false,
           });
 
           elem.relation.url = this.relationHref(elem.relation);
+          if (elem.frequency) {
+            elem.frequency.url = this.frequencyHref(elem.frequency);
+          }
+          if (elem.onset) {
+            elem.onset.url = this.onsetHref(elem.onset);
+          }
         }
       });
 
@@ -617,6 +610,7 @@ export default {
     },
     generateFields() {
       this.hasTaxon = false;
+      this.hasFrequencyOnset = false;
 
       const fields = [
         {
@@ -644,6 +638,19 @@ export default {
         },
       ];
 
+      if (isFrequencyOnsetType(this.nodeType, this.cardType)) {
+        this.hasFrequencyOnset = true;
+        fields.splice(3, 0, {
+          key: 'frequency',
+          label: 'Frequency',
+          class: 'frequency-column-width',
+        });
+        fields.splice(4, 0, {
+          key: 'onset',
+          label: 'Onset',
+          class: 'onset-column-width',
+        });
+      }
       if (isTaxonCardType(this.cardType)) {
         this.hasTaxon = true;
         fields.splice(0, 0, {
@@ -701,6 +708,16 @@ export default {
       const identifier = curie.split(/[:]+/).slice(-2, 2).join('_');
       return `http://purl.obolibrary.org/obo/${identifier}`;
     },
+    frequencyHref(frequency) {
+      const curie = frequency.id || '';
+      const identifier = curie.split(/[:]+/).slice(-2, 2).join('_');
+      return `http://purl.obolibrary.org/obo/${identifier}`;
+    },
+    onsetHref(onset) {
+      const curie = onset.id || '';
+      const identifier = curie.split(/[:]+/).slice(-2, 2).join('_');
+      return `http://purl.obolibrary.org/obo/${identifier}`;
+    },
     sourceLabel(url) {
       const result = url.split(/[/]+/)
         .pop()
@@ -715,10 +732,14 @@ export default {
 <style lang="scss">
 @import "~@/style/variables";
 .assoc-table {
-
+  width: 100%;
   .loading-div {
-    margin: 0;
-    padding: 50px;
+      margin: 15% calc(50% - 14%);
+      text-align: center;
+  }
+
+  .table {
+    width:inherit;
   }
   .table.b-table tr {
     outline: 1px solid lightgray;
@@ -737,10 +758,17 @@ export default {
     cursor: unset;
   }
 
+  .table.b-table th {
+    padding: 1px 4px;
+    font-weight: 500;
+    font-size: 0.9rem;
+  }
+
+
   .assoc-object,
   .assoc-subject {
     min-width: 200px;
-    word-break: break-all;
+    // word-break: break-all;
   }
 
 
@@ -766,7 +794,15 @@ export default {
   }
 
   .support-column-width {
-    min-width: 100px !important;
+    min-width: 120px !important;
+  }
+
+  .frequency-column-width {
+    min-width: 80px !important;
+  }
+
+  .onset-column-width {
+    min-width: 80px !important;
   }
 
   .support-is-active {

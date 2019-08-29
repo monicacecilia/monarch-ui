@@ -1,9 +1,9 @@
 <template>
-  <div class="container-fluid py-5">
+  <div class="container-fluid monarch-view">
     <div class="row">
       <div class="col-2"/>
       <div class="col-8">
-        <h1>Analyze Phenotypes</h1>
+        <h1>Phenotype Profile Search</h1>
       </div>
       <div class="col-2"/>
     </div>
@@ -413,6 +413,12 @@ export default {
       }
       return show;
     }
+  },
+  created() {
+    if (this.$route.params.phenotypes) {
+      this.phenoCurieList = this.$route.params.phenotypes;
+    }
+
   },
   async mounted() {
     // await this.applyExampleData();

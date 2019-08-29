@@ -19,22 +19,23 @@
           type="button"
           @click="toggleFilterBox"
         >
-          {{ categories.map((c) => { return firstCap(c); }).join(', ') }}
+          {{ selectDisplay }}
         </button>
         <div
+          v-click-outside="closeFilterBox"
           v-if="catDropDown"
           class="dropdown-menu list-group dropCatList px-4"
         >
           <div class="form-group">
-            <b-form-checkbox-group
-              v-model="categories"
+            <b-form-radio-group
+              v-model="category"
               :options="options"
-              plain
               stacked/>
           </div>
         </div>
       </div>
       <input
+        v-click-outside="toggleSuggestions"
         :placeholder="dynamicPlaceholder"
         :class="{
           'loading': loading
@@ -42,15 +43,13 @@
         v-model="value"
         class="form-control xform-control-sm test-input-search-text"
         type="text"
-        autofocus="autoFocus"
         @input="debounceInput"
         @keydown="inputChanged"
         @keydown.enter="enter"
         @keydown.down="down"
         @keydown.up="up"
         @keydown.esc="clearSearch"
-        @blur="clearSearch"
-        @focus="closeFilterBox"
+        @focus="toggleSuggestions"
       >
 
       <div
@@ -92,7 +91,7 @@
               v-if="suggestion.has_hl"
               class="col-5"
             >
-              <span v-html="suggestion.highlight"/>
+              <span v-html="$sanitizeText(suggestion.highlight)"/>
             </div>
             <div
               v-else
@@ -111,36 +110,19 @@
           </div>
         </div>
         <div class="row mx-3">
-          <!--
-          <div
-            v-if="suggestions.length && !singleCategory"
-            class="btn btn-outline-success col m-2"
-            v-on:click="showMore"
-          >
-            Show all results for '{{value}}'
-          </div>
- -->
           <div
             v-if="suggestions.length === 0"
             class="col border"
           >
             <b>No results for '{{ value }}'</b>
           </div>
-          <!--
-          <div
-            class="btn btn-outline-secondary col m-2"
-            @click="clearSearch"
-          >
-            Clear Search
-          </div>
- -->
         </div>
       </div>
     </div>
     <div
       v-if="homeSearch"
-      class="p-0 m-0">
-      Examples:
+      class="examples">
+      e.g.
       <button
         v-for="(example, index) in exampleSearches"
         :key="index"
@@ -155,7 +137,9 @@
 </template>
 
 <script>
-import * as BL from '@/api/BioLink';
+import * as biolink from '@/api/BioLink';
+import { reduceCategoryList } from '@/lib/CategoryMap';
+import vClickOutside from 'v-click-outside';
 
 const debounce = require('lodash/debounce');
 
@@ -172,7 +156,7 @@ const exampleSearches = [
     category: 'phenotype'
   },
   {
-    searchString: 'Shh',
+    searchString: 'SHH',
     category: 'gene'
   }
 ];
@@ -183,6 +167,9 @@ export default {
     allLower(word) {
       return word.toLowerCase();
     }
+  },
+  directives: {
+    clickOutside: vClickOutside.directive
   },
   props: {
     showSearchButton: {
@@ -218,13 +205,14 @@ export default {
     dynamicPlaceholder: {
       type: String,
       required: false,
-      default: 'search for phenotypes, diseases, genes ...'
+      default: 'Explore Monarch for phenotypes, diseases, genes and more..'
     }
   },
   data() {
     return {
       destroying: false,
-      categories: [],
+      category: 'all',
+      selectDisplay: 'All',
       exampleSearches,
       options: [
 
@@ -240,17 +228,19 @@ export default {
   watch: {
     value() {
       if (!this.value) {
-        this.open = false;
+        this.clearSearch();
       }
     },
-    categories(newValue) {
+    category(newValue) {
+      this.selectDisplay = this.options.find(opts => opts.value === newValue).text;
+      this.closeFilterBox();
       if (!this.definedCategories) {
         this.suggestions = [];
         if (this.value.length > 0) {
           this.fetchData();
         }
       }
-    }
+    },
   },
   mounted() {
     if (this.definedCategories) {
@@ -260,10 +250,13 @@ export default {
           value: elem,
         });
       });
-      this.definedCategories.forEach(elem => this.categories.push(elem));
     }
     else {
       this.options = [
+        {
+          text: 'All',
+          value: 'all'
+        },
         {
           text: 'Gene',
           value: 'gene',
@@ -294,7 +287,7 @@ export default {
     debounceInput: debounce(
       function debounceInput() {
         if (!this.destroying) {
-          if (this.value && this.value.length > 0) {
+          if (this.value && this.value.length >= 3) {
             this.fetchData();
           }
         }
@@ -302,13 +295,13 @@ export default {
     ),
     async fetchData() {
       try {
-        const searchResponse = await BL.getSearchTermSuggestions(this.value, this.categories, this.allowedPrefixes);
+        const searchResponse = await biolink.getSearchTermSuggestions(this.value, this.category, this.allowedPrefixes);
         this.suggestions = [];
         this.current = -1;
         searchResponse.docs.forEach((elem) => {
           const resultPacket = {
             match: elem.match,
-            category: this.categoryMap(elem.category),
+            category: reduceCategoryList(elem.category),
             taxon: this.checkTaxon(elem.taxon_label),
             curie: elem.id,
             highlight: elem.highlight,
@@ -344,11 +337,18 @@ export default {
       this.value = '';
       this.open = false;
       this.suggestions = [];
-      this.categories = [];
     },
     up() {
       if (this.current > 0) {
         this.current -= 1;
+      }
+    },
+    toggleSuggestions(event) {
+      if (this.open) {
+        this.open = false;
+      }
+      else if (this.suggestions.length > 0 && event.target.nodeName === 'INPUT') {
+        this.open = true;
       }
     },
     closeFilterBox() {
@@ -356,9 +356,6 @@ export default {
     },
     toggleFilterBox() {
       this.catDropDown = !this.catDropDown;
-      // if (this.catDropDown) {
-      //   this.suggestions = [];
-      // }
     },
     inputChanged() {
       this.catDropDown = false;
@@ -384,7 +381,6 @@ export default {
       }
       this.value = '';
       this.open = false;
-      this.categories = [];
       this.suggestions = [];
     },
     showMore() {
@@ -398,25 +394,6 @@ export default {
     firstCap(elem) {
       return elem.charAt(0).toUpperCase() + elem.substr(1);
     },
-    categoryMap(catList) {
-      const validCats = {
-        'gene': 'gene',
-        'variant': 'variant',
-        'phenotype': 'phenotype',
-        'genotype': 'genotype',
-        'disease': 'disease'
-      };
-      const categoryObj = catList.reduce((map, cat) => {
-        const catKey = validCats[cat];
-        if (catKey) {
-          map[catKey] = catKey;
-        }
-        return map;
-      }, {});
-      return categoryObj.gene
-        || categoryObj.variant
-        || Object.keys(categoryObj).join(',');
-    },
     checkTaxon(taxon) {
       if (typeof taxon === 'string') {
         return taxon;
@@ -424,11 +401,13 @@ export default {
       return null;
     },
     useExample(searchString, category) {
-      this.categories = [];
-      if (category) {
-        this.categories.push(category);
-      }
       this.value = searchString;
+      if (category) {
+        this.category = category;
+      }
+      else {
+        this.fetchData();
+      }
     }
   },
 };
@@ -438,13 +417,16 @@ export default {
 @import "~@/style/variables";
 
 .monarch-autocomplete {
+
   .text-align-right {
     text-align: right;
   }
+
   .autocomplete-input {
     position: relative;
     height: 300px;
   }
+
   .loading {
     background-color: #ffffff;
     background-image: url("../assets/img/infinity.gif");
@@ -452,11 +434,13 @@ export default {
     background-position: 99%;
     background-repeat: no-repeat;
   }
+
   .dropList {
     width: 100%;
     border-radius: 2px;
     border: solid black 1px;
     overflow-y: auto;
+    cursor: pointer;
 
     &.full-width-search {
       position: fixed !important;
@@ -467,15 +451,18 @@ export default {
 
   .dropCatList {
     position: absolute;
-    z-index: 1001;
+    z-index: $monarch-autocomplete-category-z;
     border-radius: 2px;
     padding-left: 2px;
     padding-right: 2px;
   }
+
   li:hover {
     background-color: cornflowerblue;
     color: white;
+    cursor: pointer;
   }
+
   .active {
     background-color: cornflowerblue;
     color: white;
@@ -493,12 +480,20 @@ export default {
      background-color:  cadetblue;
   }
 
+  .examples {
+    margin-top: 15px;
+  }
+
   .autorootdiv .input-group.input-group-sm {
     width: 400px;
   }
 
   .autorootdiv.home-search .input-group.input-group-sm {
     width: unset;
+  }
+
+  &.home-search {
+    margin: 0 10% 0 10%;
   }
 }
 </style>

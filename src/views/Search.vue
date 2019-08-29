@@ -1,24 +1,118 @@
 <template>
-  <div id="selenium_id_content">
-    <div
-      id="monarch-search-container"
-      class="container-fluid monarch-container">
-      <header class="intro">
-        <div class="intro-body">
-          <div class="container">
-            <div class="row">
-              <div
-                class="col-md-12 py-2">
-                <p class="intro-text">
-                  Search Results
-                </p>
-              </div>
+  <div
+    id="monarch-search-container"
+    class="container-fluid monarch-view">
+
+    <div class="row">
+      <div
+        class="container col-md-3"
+      >
+        <div
+          v-if="categoryFilters.length > 0 || taxonFilters.length > 0"
+          class="row card" >
+          <div class="card-header py-2">
+            Filters
+          </div>
+
+          <div
+            v-if="categoryFilters.length > 0"
+            class="px-2">
+            <div class="font-weight-bold">
+              Categories
             </div>
+            <ul>
+              <li
+                v-for="category in categoryFilters"
+                :key="category"
+                href
+                class="row">
+                {{ biolinkCategory(category) }}
+                &nbsp;
+                <button
+                  class="fa fa-remove"
+                  @click="removeCategoryFilter(category)"/>
+              </li>
+            </ul>
+          </div>
+
+          <div
+            v-if="taxonFilters.length > 0"
+            class="px-2">
+            <div class="font-weight-bold">
+              Taxa
+            </div>
+            <ul>
+              <li
+                v-for="taxon in taxonFilters"
+                :key="taxon"
+                href
+                class="row">
+                {{ taxon }}
+                &nbsp;
+                <button
+                  class="fa fa-remove"
+                  @click="removeTaxonFilter(taxon)"/>
+              </li>
+            </ul>
+          </div>
+
+        </div>
+        <div
+          class="row card"
+          style="margin-top: 20px">
+          <div class="card-header py-1">
+            Categories
+          </div>
+          <div class="card-body py-1">
+            <ul class="showFacetLinks col-md-12">
+              <li
+                v-for="(value, category) of facetCategories"
+                :key="category"
+                class="border-top border-bottom"
+              >
+                <a
+                  href
+                  @click.prevent="addCategoryFilter(category)">
+                  {{ biolinkCategory(category) }}
+                  &nbsp;
+                  <div class="pull-right">
+                    {{ value }}
+                  </div>
+                  <div class="clearfix"/>
+                </a>
+              </li>
+            </ul>
           </div>
         </div>
-      </header>
-
-      <div class="col-xs-12 col-md-9">
+        <div
+          class="row card"
+          style="margin-top: 20px">
+          <div class="card-header py-1">
+            Taxa
+          </div>
+          <div class="card-body py-1">
+            <ul class="showFacetLinks col-md-12">
+              <li
+                v-for="(value, taxon) of facetTaxons"
+                :key="taxon"
+                class="border-top border-bottom"
+              >
+                <a
+                  href
+                  @click.prevent="addTaxonFilter(taxon)">
+                  {{ taxon }}
+                  &nbsp;
+                  <div class="pull-right">
+                    {{ value }}
+                  </div>
+                  <div class="clearfix"/>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-8">
         <b-pagination
           :total-rows="numFound"
           :per-page="rowsPerPage"
@@ -30,7 +124,8 @@
         <div class="search-results-rows">
 
           <div v-if="searchResults && searchResults.length > 0 ">
-            <h3><span class="searchTerm">{{ query }}</span>  has <span class="searchTerm">{{ numFound }}</span> matches</h3>
+            <h3><span class="searchTerm">{{ query }}</span> has <span
+              class="searchTerm">{{ numFound }}</span> matches</h3>
             <b-table
               ref="results-table"
               :fields="fields"
@@ -46,7 +141,7 @@
                 slot-scope="row"
               >
                 <router-link :to="row.item.toLink">
-                  {{ row.item.label }}
+                  <span v-html="row.item.label"/>
                 </router-link>
               </template>
               <template
@@ -58,30 +153,21 @@
             </b-table>
           </div>
         </div>
-
-        <monarch-footer/>
       </div>
+
     </div>
-</div></template>
+  </div>
+</template>
 
 
 <script>
 import * as BL from '@/api/BioLink';
+import { reduceCategoryList } from '@/lib/CategoryMap';
 
 const DEFAULT_ROWS_PER_PAGE = 25;
-const validCats = {
-  'gene': 'gene',
-  'phenotype': 'phenotype',
-  'genotype': 'genotype',
-  'disease': 'disease',
-  'variant': 'variant',
-};
 
 export default {
   name: 'Search',
-  components: {
-    'monarch-footer': require('@/components/Footer.md').default,
-  },
   data() {
     return {
       facets: [],
@@ -91,22 +177,38 @@ export default {
       searchResults: [],
       currentPage: 1,
       rowsPerPage: DEFAULT_ROWS_PER_PAGE,
+      categoryFilters: [],
+      taxonFilters: [],
+      facetCategories: {},
+      facetTaxons: {},
       numFound: 0,
       numRowsDisplayed: 0,
       selenium_id: '',
       searching: true,
       fields: [
-        { key: 'label', label: 'Term' },
-        { key: 'category', label: 'Category' },
-        { key: 'taxon', label: 'Taxon' },
-        { key: 'highlight', label: 'Matching String' },
+        {
+          key: 'label',
+          label: 'Term'
+        },
+        {
+          key: 'category',
+          label: 'Category'
+        },
+        {
+          key: 'taxon',
+          label: 'Taxon'
+        },
+        {
+          key: 'highlight',
+          label: 'Matching String'
+        },
       ]
     };
   },
   watch: {
     '$route': function $route(to, from) {
       this.searchViaRouteParams();
-      this.$refs['results-table'].refresh();
+      this.updateResultsTable();
     }
   },
   mounted() {
@@ -114,6 +216,34 @@ export default {
   },
 
   methods: {
+    updateResultsTable() {
+      if (this.$refs['results-table']) {
+        this.$refs['results-table'].refresh();
+      }
+    },
+    biolinkCategory(category) {
+      return reduceCategoryList([category]);
+    },
+    addTaxonFilter(taxon) {
+      this.taxonFilters.push(taxon);
+      this.search();
+      this.updateResultsTable();
+    },
+    removeTaxonFilter(taxon) {
+      this.taxonFilters = this.taxonFilters.filter(c => c !== taxon);
+      this.search();
+      this.updateResultsTable();
+    },
+    addCategoryFilter(category) {
+      this.categoryFilters.push(category);
+      this.search();
+      this.updateResultsTable();
+    },
+    removeCategoryFilter(category) {
+      this.categoryFilters = this.categoryFilters.filter(c => c !== category);
+      this.search();
+      this.updateResultsTable();
+    },
     searchViaRouteParams() {
       this.query = this.$route.params.query;
       // const start = this.$route.params.start ? this.$route.params.start : 0;
@@ -122,33 +252,44 @@ export default {
     },
     rowsProvider(ctx, callback) {
       // const start = ((this.currentPage - 1) * this.rowsPerPage);
-      this.search().then((data) => {
-        callback(this.searchResults);
-      }).catch((error) => {
-        callback([]);
-      });
+      this.search()
+        .then((data) => {
+          callback(this.searchResults);
+        })
+        .catch((error) => {
+          callback([]);
+        });
     },
     async search() {
       try {
         // let start = page
         const start = ((this.currentPage - 1) * this.rowsPerPage);
         // this.query, start, this.rowsPerPage
-        const searchResponse = await BL.getSearchResults(this.query, start, this.rowsPerPage);
+        const searchResponse = await BL.getSearchResults(this.query, start, this.rowsPerPage, this.categoryFilters, this.taxonFilters);
         this.searchResults.length = 0;
-        this.searchParams = {};
-        this.searchFacets = {};
+        // this.searchParams = {};
+        this.facetCategories = {};
+        // console.log(JSON.stringify(searchResponse.facet_counts.category, null, 2));
+        Object.keys(searchResponse.facet_counts.category).forEach((key) => {
+          if (this.categoryFilters.indexOf(key) === -1) {
+            this.facetCategories[key] = searchResponse.facet_counts.category[key];
+          }
+        });
+
+        this.facetTaxons = searchResponse.facet_counts.taxon_label;
         this.numFound = searchResponse.numFound;
         // console.log('searchResponse', searchResponse.numFound, searchResponse.docs[0].label[0]);
         searchResponse.docs.forEach((elem, index) => {
           const highlight = searchResponse.highlighting[elem.id];
+          const simplifiedCategory = reduceCategoryList(elem.category);
           const resultPacket = {
-            category: elem.category[0],
+            category: simplifiedCategory,
             taxon: elem.taxon_label,
             label: elem.label[0],
             curie: elem.id,
             rows: this.rows,
             highlight: highlight.highlight,
-            toLink: '/' + elem.category[0] + '/' + elem.id,
+            toLink: '/' + simplifiedCategory + '/' + elem.id,
             match: highlight.match,
             hasHighlight: highlight.has_highlight,
           };
@@ -270,5 +411,9 @@ export default {
 
     .searchTerm {
         color: #d9534f;
+    }
+
+    .showFacetLinks {
+        list-style: none;
     }
 </style>

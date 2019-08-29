@@ -41,19 +41,54 @@ const router = new Router({
       component: Home,
     },
     {
-      path: '/about/readme',
-      name: 'about-readme',
-      component: require('../README.md').default,
-    },
-    {
       path: '/about/monarch',
       name: 'about-monarch',
       component: require('@/views/AboutMonarch.md').default,
     },
     {
+      path: '/about/monarch-web-services',
+      name: 'monarch-web-services',
+      component: require('@/views/Services.md').default,
+    },
+    {
       path: '/about/team',
       name: 'about-team',
       component: require('@/views/AboutTeam.md').default,
+    },
+    {
+      path: '/about/disclaimer',
+      name: 'about-disclaimer',
+      component: require('@/views/Disclaimer.md').default,
+    },
+    {
+      path: '/documentation/publications',
+      name: 'about-publications',
+      component: require('@/views/Publications.md').default,
+    },
+    {
+      path: '/help/cite',
+      name: 'about-citing',
+      component: require('@/views/Citing.md').default,
+    },
+    {
+      path: '/help/linkout',
+      name: 'link-to-us',
+      component: require('@/views/LinkToUs.md').default
+    },
+    {
+      path: '/help/contact',
+      name: 'contact-us',
+      component: require('@/views/Contact.md').default
+    },
+    {
+      path: '/tools/other-tools',
+      name: 'other-tools',
+      component: require('@/views/OtherTools.md').default,
+    },
+    {
+      path: '/tools/text-annotate',
+      name: 'text-annotate',
+      component: () => import(/* webpackChunkName: "text-annotate" */ './views/TextAnnotator.vue'),
     },
     {
       path: '/search/:query?',
@@ -65,11 +100,11 @@ const router = new Router({
     },
     {
       path: '/analyze/phenotypes',
-      name: 'analyzephenotypes',
+      name: 'analyze-phenotypes',
       // route level code-splitting
       // this generates a separate chunk (analytics.[hash].js) for this route
       // which is lazy-loaded when the route is visited.
-      component: () => import(/* webpackChunkName: "analyzephenotypes" */ './views/AnalyzePhenotypes.vue'),
+      component: () => import(/* webpackChunkName: "analyze-phenotypes" */ './views/AnalyzePhenotypes.vue'),
     },
     {
       path: '/analytics',
@@ -80,12 +115,18 @@ const router = new Router({
       component: () => import(/* webpackChunkName: "analytics" */ './views/Analytics.vue'),
     },
     {
+      path: '/about/data-sources',
+      name: 'sources',
+      // Work done at Hackathon Seth Dan Nathan Chris
+      component: () => import(/* webpackChunkName: "analytics" */ './views/Sources.vue'),
+    },
+    {
       path: '/*',
-      name: 'MonarchLegacy',
+      name: 'RouteError',
       // route level code-splitting
       // this generates a separate chunk (analytics.[hash].js) for this route
       // which is lazy-loaded when the route is visited.
-      component: () => import(/* webpackChunkName: "MonarchLegacy" */ './views/MonarchLegacy.vue'),
+      component: () => import(/* webpackChunkName: "routeerror" */ './views/RouteError.vue'),
     },
   ],
 

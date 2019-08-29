@@ -1,6 +1,6 @@
 <template>
 
-  <div>
+  <div v-click-outside="hideNeighborhoodOrFacets" class="node-sidebar">
     <node-sidebar-neighborhood
       :is-visible="isNeighborhoodShowing"
       :node-type="nodeType"
@@ -9,68 +9,40 @@
       :superclasses="superclasses"
     />
 
-    <div class="node-sidebar">
-      <ul
-        v-if="nodeType"
-        class="list-group">
-        <li class="list-group-item list-group-item-node">
-          <a
-            :href="debugServerURL"
-            target="_blank">
-            <img
-              :src="$parent.icons[nodeType]"
-              class="entity-type-icon">
-            <span class="list-group-item-value">{{ $parent.labels[nodeType] }}</span>
-          </a>
-          <a
-            :href="'http://beta.monarchinitiative.org' + $route.path"
-            class="debug-link-to-alpha"
-            target="_blank"/>
+    <div>
+      <ul v-if="nodeType" class="list-group">
+        <li class="list-group-item title">
+          {{ $parent.labels[nodeType] }}
+        </li>
+        <li :class="{ active: !expandedCard }" class="list-group-item list-group-item-squat">
+          <b-link @click="expandCard(null)">
+            <i class="fa fa-fw fa-th-large"/>
+            <span class="list-group-item-value">Overview</span>
+          </b-link>
         </li>
 
         <li class="list-group-item list-group-item-squat">
-          <b-link
-            :disabled="neighborhoodDisabled"
-            @click="toggleNeighborhood()">
-            <i class="fa xfa-2x fa-crosshairs"/>
+          <b-link :disabled="neighborhoodDisabled" @click="toggleNeighborhood()">
+            <i class="fa fa-fw fa-share-alt neighbors"/>
             <span class="list-group-item-value">Neighbors</span>
           </b-link>
         </li>
 
         <li class="list-group-item list-group-item-squat">
-          <a
-            @click="toggleFacets()">
-            <i class="fa fa-list"/>
+          <b-link :disabled="facetsDisabled" @click="toggleFacets()">
+            <i class="fa fa-fw fa-cubes"/>
             <span class="list-group-item-value">Facets</span>
-          </a>
+          </b-link>
         </li>
-
-        <li
-          :class="{ active: !expandedCard }"
-          class="list-group-item list-group-item-squat">
-          <a
-            href="#"
-            @click="expandCard(null)">
-            <i class="fa fa-th-large"/>
-            <span class="list-group-item-value">Overview</span>
-          </a>
-        </li>
-
         <li
           v-for="cardType in cardsToDisplay"
           :class="{ active: expandedCard === cardType }"
           :key="cardType"
           class="list-group-item">
-          <a
-            :href="'#' + cardType"
-            @click="expandCard(cardType)">
-            <img
-              :src="$parent.icons[cardType]"
-              class="entity-type-icon">
-            <span
-              class="list-group-item-value">
-              {{ $parent.labels[cardType] }} ({{ cardCounts[cardType] }})
-
+          <a :href="'#' + cardType" @click="expandCard(cardType)">
+            <img :src="$parent.icons[cardType]" class="entity-type-icon">
+            <span class="list-group-item-value">
+              {{ $parent.labels[cardType] }} <span class="count">{{ cardCounts[cardType] }}</span>
             </span>
           </a>
         </li>
@@ -89,10 +61,11 @@
 
 
 <script>
-import * as BL from '@/api/BioLink';
+import * as biolinkService from '@/api/BioLink';
 
 import NodeSidebarNeighborhood from '@/components/NodeSidebarNeighborhood.vue';
 import NodeSidebarFacets from '@/components/NodeSidebarFacets.vue';
+import vClickOutside from 'v-click-outside';
 
 export default {
   name: 'NodeSidebar',
@@ -101,7 +74,9 @@ export default {
     'node-sidebar-neighborhood': NodeSidebarNeighborhood,
     'node-sidebar-facets': NodeSidebarFacets,
   },
-
+  directives: {
+    clickOutside: vClickOutside.directive
+  },
   props: {
     cardsToDisplay: {
       type: Array,
@@ -163,11 +138,14 @@ export default {
     neighborhoodDisabled() {
       return (!this.superclasses || this.superclasses.length === 0) && (!this.subclasses || this.subclasses.length === 0);
     },
+    facetsDisabled() {
+      return false; // this.nodeType === 'publication';
+    },
     debugServerURL() {
       const debugHash = (this.$route.hash.length > 1)
         ? (this.$route.hash + 's')
         : '';
-      const result = BL.debugServerName() + this.$route.path + debugHash;
+      const result = biolinkService.debugServerName() + this.$route.path + debugHash;
       return result;
     },
   },
@@ -198,6 +176,14 @@ export default {
     toggleNeighborhood() {
       this.$emit('toggle-neighborhood');
     },
+    hideNeighborhoodOrFacets() {
+      if (this.isNeighborhoodShowing) {
+        this.toggleNeighborhood();
+      }
+      else if (this.isFacetsShowing) {
+        this.toggleFacets();
+      }
+    }
   }
 };
 
@@ -207,8 +193,7 @@ export default {
 @import "~@/style/variables";
 
 $title-bar-height: 70px;
-$sidebar-width: 200px;
-$collapsed-sidebar-width: 55px;
+$collapsed-sidebar-width: 50px;
 
 .node-sidebar {
   background: $monarch-bg-color;
@@ -216,156 +201,169 @@ $collapsed-sidebar-width: 55px;
   bottom: 0;
   left: 0;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
   position: fixed;
   width: $sidebar-width;
   top: ($navbar-height);
-  z-index: 1000;
-}
+  z-index: $monarch-node-sidebar-z;
+  box-shadow: -4px -1px 10px 0px;
 
-.node-sidebar a,
-.node-sidebar a:hover,
-.node-sidebar a:focus {
-  color: inherit;
-  text-decoration: none;
-  transition: all 0.3s;
-}
-
-
-.node-sidebar .node-filter-section {
-  padding: 0;
-  margin-top: 6px;
-  height: 250px;
-  overflow-y: scroll;
-  color: white;
-}
-
-.node-sidebar .node-filter-section h5 {
-  margin-left:10px;
-}
-
-.node-sidebar li.list-group-item {
-  margin: 0;
-  padding: 0;
-  background-color: transparent;
-  xborder-color: #030303;
-}
-
-.node-sidebar li.list-group-item > a {
-  background-color: transparent;
-  color: #d1d1d1;
-  cursor: pointer;
-  display: block;
-  font-size: 16px;
-  font-weight: 400;
-  height: 63px;
-  line-height: 26px;
-  padding: 17px 20px 17px 25px;
-  position: relative;
-  white-space: nowrap;
-  width: $sidebar-width;
-  text-decoration: none;
-  margin: 0;
-  padding: 2px 0 0 6px;
-  height: 35px;
-}
-
-.node-sidebar li.list-group-item > a:hover {
-  color: #fff;
-  font-weight: 600
-}
-
-.node-sidebar li.list-group-item > a.disabled:hover {
-  color: #ccc;
-  font-weight: unset
-}
-
-.node-sidebar li.list-group-item.active > a {
-  xbackground-color: #393f44;
-  color: #fff;
-  font-weight: 600
-}
-
-.node-sidebar li.list-group-item.active > a:before {
-  background: #39a5dc;
-  content: " ";
-  height: 100%;
-  left: 0;
-  position: absolute;
-  top: 0;
-  width: 3px;
-}
-
-.node-sidebar li.list-group-item > a img.entity-type-icon {
-  margin:0 5px;
-  padding:0;
-  height:30px;
-}
-
-.node-sidebar li.list-group-item.list-group-item-node {
-}
-
-.node-sidebar li.list-group-item.list-group-item-node .debug-link-to-alpha {
-  padding:0;
-  height:0;
-  width:100%;
-  border:2px solid $monarch-bg-color;
-
-  &:hover {
-    border-color: darkslateblue !important;
+  a,
+  a:hover,
+  a:focus {
+    color: white;
+    text-decoration: none;
+    transition: all 0.3s;
   }
-}
 
-.node-sidebar li.list-group-item.list-group-item-node > a {
-  text-transform: uppercase;
-  vertical-align: bottom;
-  height: 28px;
-}
+  ul.list-group {
+    margin: 2px 0 0 0;
+  }
 
-.node-sidebar li.list-group-item.list-group-item-node img.entity-type-icon {
-  margin: 1px 7px;
-  height: 27px;
-}
+  li.list-group-item {
+    padding: 5px 0 0 0;
+    background-color: transparent;
+    border: 0;
 
-.node-sidebar li.list-group-item.list-group-item-squat {
-}
+    &.title {
+      text-transform: uppercase;
+      color: white;
+      text-align: center;
+      padding: 5px 0;
+      cursor: default;
+    }
 
-.node-sidebar li.list-group-item.list-group-item-squat > a {
-  padding: 0;
-}
+    & .fa {
+      font-size: 1.6em;
 
-.node-sidebar li.list-group-item.list-group-item-squat > a i.fa {
-  padding: 5px 15px;
-}
+      &.neighbors {
+        transform: rotate(90deg);
+      }
+    }
 
-.node-sidebar li.list-group-item.list-group-item-squat > a .list-group-item-value {
-  padding: 0;
-  vertical-align:text-bottom;
-}
+    & .count {
+      float: right;
+      padding: 0 15px 0 0;
+    }
 
-.node-sidebar li.list-group-item.list-group-item-squat > a {
-  height: 35px;
-}
+    > a {
+      background-color: transparent;
+      color: #d1d1d1;
+      cursor: pointer;
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 400;
+      font-stretch: condensed;
+      line-height: 26px;
+      position: relative;
+      white-space: nowrap;
+      text-decoration: none;
+      margin: 0;
+      padding: 0 0 0 10px;
+      height: 35px;
 
-.node-sidebar li.list-group-item.list-group-item-squat > a > i {
-  margin: 5px 0 0 5px;
-}
+      &.disabled {
+        color: #989898;
+        cursor: no-drop;
+      }
 
-.node-sidebar li.list-group-item > a .list-group-item-value {
-  margin: 2px 0 0 5px;
+      &:hover {
+        color: white;
+
+        &.disabled {
+          color: #989898;
+        }
+      }
+    }
+
+    &.active {
+      background: linear-gradient(to left, #262a2b91, #262a2b36,#262a2b0a) !important;
+      color: white !important;
+
+      & a {
+        color: white;
+      }
+
+      & .list-group-item-value {
+        color: #cce34c !important;
+      }
+    }
+
+    &> a img.entity-type-icon {
+      margin: 0;
+      padding: 0;
+      height: 30px;
+    }
+
+    &.list-group-item-node {
+      .debug-link-to-alpha {
+        padding: 0;
+        height: 0;
+        width: 100%;
+        border: 2px solid $monarch-bg-color;
+
+        &:hover {
+          border-color: darkslateblue !important;
+        }
+      }
+
+      > a {
+        text-transform: uppercase;
+        vertical-align: bottom;
+        height: 28px;
+      }
+
+      &> a img.entity-type-icon {
+        margin: 0 6px 4px 2px;
+        height: 27px;
+      }
+    }
+
+    &.list-group-item-squat {
+
+      a {
+        height: 30px;
+
+        i.fa {
+          margin: 0 0 0 2px;
+          padding: 0;
+        }
+
+        .list-group-item-value {
+          vertical-align: text-bottom;
+        }
+      }
+    }
+
+    & .list-group-item-value {
+      margin: 0 0 0 10px;
+    }
+  }
+
+  .node-filter-section {
+    padding: 0;
+    margin-top: 6px;
+    height: 250px;
+    overflow-y: scroll;
+    color: white;
+
+    h5 {
+      margin-left:10px;
+    }
+  }
 }
 
 @media (max-width: $sidebar-collapse-width) {
   .node-sidebar {
     width: $collapsed-sidebar-width;
-  }
 
-  .node-sidebar li.list-group-item > a .list-group-item-value {
-    display: none;
-  }
+    li.list-group-item > a .list-group-item-value {
+      display: none;
+    }
 
-  .node-sidebar li.node-filter-section {
-    display: none;
+    li.node-filter-section {
+      display: none;
+    }
   }
 }
 

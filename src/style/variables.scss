@@ -1,4 +1,5 @@
-$navbar-height: 36px !default;
+$navbar-height: 60px !default;
+$footer-height: 65px !default;
 
 // $body-color:                $gray-900 !default;
 // $font-size-base: 0.875rem;   // 14px !default;
@@ -10,6 +11,7 @@ $grid-float-breakpoint: 600px;
 $link-color: darken(#4285f4, 20%); // #0088dd; // #1a0dab; // #0088ce; // #4285f4;
 
 $monarch-bg-color: #15556A;
+$monarch-button-color: #CCE34C;
 $home-section-light-bg: white;
 $home-section-dark-bg: #f8f9fa;
 
@@ -18,6 +20,23 @@ $nav-link-padding-y:        0 !default;
 $nav-link-padding-x:        0 !default;
 
 
+/*
+  Copied from bootstrap/scss/_variables.scss for reference:
+    $zindex-dropdown:                   1000 !default;
+    $zindex-sticky:                     1020 !default;
+    $zindex-fixed:                      1030 !default;
+    $zindex-modal-backdrop:             1040 !default;
+    $zindex-modal:                      1050 !default;
+    $zindex-popover:                    1060 !default;
+    $zindex-tooltip:                    1070 !default;
+*/
+
+$monarch-node-title-z: 1;
+$monarch-node-sidebar-z: 100;
+$monarch-node-sidebar-flyout-z: ($monarch-node-sidebar-z + 2);
+$monarch-node-overlay-z: ($monarch-node-sidebar-z + 1);
+$monarch-autocomplete-category-z: 1001;
+$monarch-footer-z: ($monarch-node-sidebar-z + 10);
 
 $grid-breakpoints: (
   xs: 0,
@@ -37,4 +56,5 @@ $grid-breakpoints: (
 
 
 $collapsed-sidebar-width: 55px;
+$sidebar-width: 15%;
 

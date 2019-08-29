@@ -1,20 +1,10 @@
 <template>
-  <div
-    class="container-fluid monarch-home-view">
-
-    <div class="row">
-      <vml-home-intro-component/>
-    </div>
+  <div class="container-fluid monarch-home-view">
+    <vml-home-intro-component/>
     <vml-home-about-monarch-component/>
-    <vml-home-what-we-do-component/>
     <vml-home-news-component/>
-    <vml-home-data-component/>
     <vml-home-partners-component/>
-
-    <div class="row">
-      <home-footer/>
-    </div>
-
+    <div class="spacer"/>
   </div>
 </template>
 
@@ -23,10 +13,19 @@
   @import "~@/style/variables";
 
   div.container-fluid.monarch-home-view {
-    margin-top: $navbar-height;
+    padding: 0;
     background: $monarch-bg-color;
-    > .row > div {
+
+    .row {
+      margin-left: 0;
+      margin-right: 0;
+    }
+    .row > div {
       width: 100%;
+    }
+
+    .spacer {
+      height: 50px;
     }
 
     // //
@@ -45,14 +44,12 @@
 export default {
   name: 'Home',
   components: {
-    'vml-home-intro-component': require('@/components/HomeIntro.md').default,
-    'vml-home-about-monarch-component': require('@/components/HomeAboutMonarch.md').default,
-    'vml-home-what-we-do-component': require('@/components/HomeWhatWeDo.md').default,
-    'vml-home-news-component': require('@/components/HomeNews.md').default,
-    'vml-home-data-component': require('@/components/HomeData.md').default,
-    'vml-home-partners-component': require('@/components/HomePartners.md').default,
-
-    'home-footer': require('@/components/HomeFooter.vue').default,
+    'vml-home-intro-component': require('@/components/home/HomeIntro.md').default,
+    'vml-home-about-monarch-component': require('@/components/home/HomeAboutMonarch.md').default,
+    'vml-home-what-we-do-component': require('@/components/home/HomeWhatWeDo.md').default,
+    'vml-home-news-component': require('@/components/home/HomeNews.md').default,
+    'vml-home-partners-component': require('@/components/home/HomePartners.md').default,
+    // 'vml-home-data-component': require('@/components/home/HomeData.md').default,
   },
 };
 </script>

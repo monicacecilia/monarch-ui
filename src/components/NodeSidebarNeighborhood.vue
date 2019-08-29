@@ -1,8 +1,6 @@
 <template>
 
-  <nav
-    id="neighborhood"
-    :class="{ active: isVisible }">
+  <nav id="neighborhood" :class="{ active: isVisible }">
 
     <div class="neighborhood">
       <div
@@ -12,14 +10,14 @@
         <div class="col-12">
           <router-link
             :to="'/' + nodeType + '/' + c.id">
-            {{ c.label }}
+            {{ getLabel(c) }}
           </router-link>
         </div>
       </div>
 
       <div class="row currentclass">
         <div class="col-12">
-          {{ nodeLabel }}
+          {{ nodeLabel }} <i class="fa fa-flag" style="float:right" aria-hidden="true"/>
         </div>
       </div>
 
@@ -28,9 +26,8 @@
         :key="c.id"
         class="row subclass">
         <div class="col-12">
-          <router-link
-            :to="'/' + nodeType + '/' + c.id">
-            {{ c.label }}
+          <router-link :to="'/' + nodeType + '/' + c.id">
+            {{ getLabel(c) }}
           </router-link>
         </div>
       </div>
@@ -44,7 +41,6 @@
 
 export default {
   name: 'NodeSidebarNeighborhood',
-
   props: {
     nodeType: {
       type: String,
@@ -72,6 +68,12 @@ export default {
       default: false,
     },
   },
+
+  methods: {
+    getLabel(c) {
+      return c.label || c.id;
+    },
+  },
 };
 
 </script>
@@ -87,17 +89,17 @@ $neighborhood-button-width: 32px;
 #neighborhood {
   width: $neighborhood-width;
   position: fixed;
-  top: ($navbar-height + 70);
+  top: ($navbar-height + 64);
   left: (-$neighborhood-width);
   min-height: 40px;
-  z-index: 1050;
+  z-index: $monarch-node-sidebar-flyout-z;
   transition: all 0.3s;
   overflow-y: auto;
   overflow-x: hidden;
   background: ghostwhite;
   border:2px solid lightgray;
   border-radius: 5px;
-  max-height: 80%;
+  max-height: 75%;
   font-size: 0.95rem;
   padding: 5px;
 }
@@ -122,8 +124,9 @@ $neighborhood-button-width: 32px;
 }
 
 #neighborhood .neighborhood .currentclass {
-  font-weight: 600;
+  font-weight: 900;
   margin-left: 15px;
+  cursor: default;
 }
 
 #neighborhood .neighborhood .subclass {

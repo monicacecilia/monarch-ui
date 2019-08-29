@@ -5,6 +5,7 @@ const nonrootdomain = process.env.BUILD === 'nonrootdomain';
 const baseURL = nonrootdomain ? '/monarch-ui/' : '/';
 
 const markdownItClass = require('markdown-it');
+process.env.VUE_APP_VERSION = require('./package.json').version;
 
 const mdLoader = markdownItClass({
   html: true,
@@ -29,6 +30,7 @@ const GenomeFeatureViewer = path.resolve(__dirname, 'node_modules/genomefeaturec
 const GenomeFeatureViewerCSS = path.resolve(__dirname, 'node_modules/genomefeaturecomponent/src/GenomeFeatureViewer.css');
 
 const vueConfig = {
+
   runtimeCompiler: true,
   // outputDir: 'dist',
   publicPath: baseURL,
@@ -64,7 +66,6 @@ const vueConfig = {
     config.resolveLoader.modules.add(
       path.resolve('./src/loaders/')
     );
-
     config.module
       .rule('README')
       .test(/\.md$/)
@@ -75,7 +76,19 @@ const vueConfig = {
       .loader('vue-loader')
       .end()
       .use('vue-markdown-loader')
-      // Original: .loader('vue-markdown-loader/lib/markdown-compiler')
+      .loader('vue-markdown-loader-improved.js')
+      .options(mdLoaderPlain);
+
+    config.module
+      .rule('CONTRIBUTING')
+      .test(/\.md$/)
+      .include
+      .add(path.resolve('./CONTRIBUTING.md'))
+      .end()
+      .use('vue-loader')
+      .loader('vue-loader')
+      .end()
+      .use('vue-markdown-loader')
       .loader('vue-markdown-loader-improved.js')
       .options(mdLoaderPlain);
 
